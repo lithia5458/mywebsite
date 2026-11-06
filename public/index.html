@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>wrench.repair</title>
+  <meta name="description" content="wrench.repair is a car repair helper in development. Tell it what's wrong and get repair steps from official service manuals, matched to your experience.">
+  <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+  <link rel="preload" href="assets/fonts/coolvetica.woff2" as="font" type="font/woff2" crossorigin>
+  <style>
+    @font-face {
+      font-family: "Coolvetica";
+      src: url("assets/fonts/coolvetica.woff2") format("woff2");
+      font-weight: 400 700;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    :root {
+      --bg: #f6f5f2;
+      --surface: #ffffff;
+      --ink: #1b1a22;
+      --muted: #5f5d68;
+      --faint: #8e8c96;
+      --line: #dddbe2;
+      --accent: #8a3bd8;
+      --tint: rgba(138, 59, 216, 0.10);
+      --display: "Coolvetica", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color-scheme: light dark;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121117;
+        --surface: #1a1920;
+        --ink: #ecebf0;
+        --muted: #a5a3ae;
+        --faint: #74727d;
+        --line: #2d2b35;
+        --accent: #c993ff;
+        --tint: rgba(201, 147, 255, 0.14);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); line-height: 1.6; }
+    a { color: inherit; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.1; margin: 0; }
+    .wrap { width: 100%; max-width: 1100px; margin: 0 auto; padding: 0 32px; }
+
+    /* Header */
+    header { border-bottom: 1px solid var(--line); }
+    header .wrap { display: flex; align-items: center; gap: 28px; height: 64px; }
+    .logo { display: block; margin-left: -10px; }
+    .logo img { display: block; height: 40px; width: auto; }
+    header nav { display: flex; gap: 24px; margin-left: auto; }
+    header nav a { text-decoration: none; color: var(--muted); }
+    header nav a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
+
+    /* Intro */
+    .intro { padding: 72px 0 0; }
+    h1 { font-size: clamp(2.5rem, 5.5vw, 4.4rem); max-width: 13em; }
+    .lede { font-size: 1.15rem; color: var(--muted); margin: 20px 0 0; max-width: 34em; }
+    .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
+    .btn { display: inline-block; padding: 12px 20px; border-radius: 8px; font-weight: 600; text-decoration: none; }
+    .btn-primary { background: var(--ink); color: var(--bg); }
+    .btn-primary:hover { opacity: .85; }
+    .btn-plain { border: 1px solid var(--line); }
+    .btn-plain:hover { border-color: var(--ink); }
+
+    /* Example */
+    .example { margin: 64px 0 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+    .example-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+    .example-bar h2 { font-size: 1.2rem; }
+    .example-bar .note { color: var(--faint); font-size: 0.9rem; }
+    .toggle { display: inline-flex; margin-left: auto; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .toggle button { border: 0; background: none; cursor: pointer; padding: 7px 14px; font: 500 0.9rem var(--body); color: var(--muted); }
+    .toggle button + button { border-left: 1px solid var(--line); }
+    .toggle button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+
+    .example-body { display: grid; grid-template-columns: 1fr 1fr; }
+    .figure { border-right: 1px solid var(--line); padding: 20px; }
+    .fig-sticky { position: sticky; top: 20px; }
+    .figure svg { display: block; width: 100%; height: auto; }
+    .caption { color: var(--faint); font-size: 0.85rem; margin: 8px 0 0; text-align: center; }
+
+    .part { color: var(--ink); transition: color .2s, opacity .2s; }
+    .part .fillable { fill: var(--surface); transition: fill .2s; }
+    .part.on { color: var(--accent); }
+    .part.on .fillable { fill: var(--tint); }
+    .fig-art.has-on .part:not(.on):not(.static) { opacity: .35; }
+    .callout { color: var(--faint); }
+    .callout circle { fill: var(--surface); }
+    .callout text { font: 600 12px var(--body); fill: currentColor; }
+    .callout .letter { font-weight: 700; font-size: 11px; }
+    .callout.on { color: var(--accent); }
+    .hidden-line { stroke-dasharray: 5 4; }
+
+    .procedure { padding: 16px 20px 20px; }
+    .steps-list { margin: 0; padding: 0 0 0 1.6em; }
+    .steps-list li { padding: 8px 10px; margin-left: -10px; border-radius: 6px; }
+    .steps-list li::marker { color: var(--faint); }
+    .steps-list li.on { background: var(--tint); }
+    .steps-list strong { display: block; font-weight: 600; }
+    .steps-list p { margin: 2px 0 0; color: var(--muted); font-size: 0.95rem; line-height: 1.5; }
+    .steps-list .warn { display: block; margin-top: 4px; font-size: 0.9rem; }
+    .steps-list .warn b { color: #a86f00; }
+    @media (prefers-color-scheme: dark) { .steps-list .warn b { color: #e5b53c; } }
+    .steps-list[hidden] { display: none; }
+    .footnote { margin: 12px 0 0; color: var(--faint); font-size: 0.85rem; }
+
+    /* Sections */
+    section.block { padding: 96px 0 0; }
+    section.block h2 { font-size: clamp(1.9rem, 3.6vw, 2.6rem); }
+    .sub { color: var(--muted); font-size: 1.1rem; margin: 10px 0 0; max-width: 34em; }
+
+    .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; margin: 40px 0 0; padding: 0; list-style: none; counter-reset: n; }
+    .three li { counter-increment: n; border-top: 2px solid var(--ink); padding-top: 16px; }
+    .three li::before { content: counter(n); font: 700 1.6rem var(--display); color: var(--faint); }
+    .three h3 { font-size: 1.35rem; margin-top: 6px; }
+    .three p { color: var(--muted); margin: 8px 0 0; }
+
+    .features { display: grid; grid-template-columns: 1fr 1fr; gap: 28px 48px; margin: 36px 0 0; padding: 0; list-style: none; }
+    .features strong { display: block; font: 700 1.2rem var(--display); }
+    .features span { color: var(--muted); }
+
+    .status { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
+    .safety { border-left: 4px solid #e5b53c; background: var(--surface); padding: 16px 20px; border-radius: 0 8px 8px 0; }
+    .safety strong { display: block; margin-bottom: 4px; }
+    .safety p { margin: 0; color: var(--muted); }
+
+    footer { margin-top: 96px; border-top: 1px solid var(--line); padding: 24px 0 32px; }
+    footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; align-items: center; color: var(--faint); }
+    footer img { display: block; height: 30px; width: auto; margin-left: -8px; }
+
+    /* The drawing traces itself once when the page loads */
+    .js .draw [pathLength] { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 1.4s ease-out forwards; }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+
+    @media (max-width: 860px) {
+      .intro { padding-top: 48px; }
+      .example-body { grid-template-columns: 1fr; }
+      .figure { border-right: 0; border-bottom: 1px solid var(--line); }
+      .three { grid-template-columns: 1fr; gap: 28px; }
+      .features { grid-template-columns: 1fr; }
+      .status { grid-template-columns: 1fr; gap: 28px; }
+      section.block { padding-top: 72px; }
+    }
+    @media (max-width: 640px) {
+      .wrap { padding: 0 16px; }
+      header nav { display: none; }
+      .logo img { height: 30px; }
+      .figure { padding: 16px 12px; }
+      .callout text { font-size: 15px; }
+      .callout .letter { font-size: 13px; }
+      .toggle { margin-left: 0; }
+      .procedure { padding: 14px 12px 16px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .js .draw [pathLength] { animation: none; stroke-dasharray: none; }
+    }
+  </style>
+  <script>document.documentElement.classList.add("js");</script>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <a class="logo" href="/">
+        <img src="assets/logo-transparent-gradient.png" alt="wrench.repair" width="250" height="40">
+      </a>
+      <nav aria-label="Primary">
+        <a href="#example">Example</a>
+        <a href="#how">How it works</a>
+        <a href="#features">What's planned</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="intro">
+      <div class="wrap">
+        <h1>Fix your car using the real service manual</h1>
+        <p class="lede">Tell wrench.repair what's wrong with your car. It walks you through the repair using the manufacturer's own service manual, written for how much experience you have.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="#example">See an example</a>
+          <a class="btn btn-plain" href="#how">How it works</a>
+        </div>
+
+        <div class="example" id="example">
+          <div class="example-bar">
+            <h2>Replacing front brake pads</h2>
+            <div class="toggle" role="group" aria-label="Experience level">
+              <button type="button" data-mode="new" aria-pressed="true">New to this</button>
+              <button type="button" data-mode="pro" aria-pressed="false">Done it before</button>
+            </div>
+          </div>
+
+          <div class="example-body">
+            <div class="figure">
+              <div class="fig-sticky">
+              <svg class="fig-art draw" viewBox="0 0 520 400" role="img" aria-label="Diagram of a front disc brake with labeled caliper, brake pads, slide bolt, rotor and lug nuts">
+                <g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <g class="part" data-part="D">
+                    <circle class="fillable" cx="200" cy="200" r="120" pathLength="1"/>
+                    <circle cx="200" cy="200" r="112" pathLength="1" opacity=".4"/>
+                    <g opacity=".7">
+                      <circle cx="283.1" cy="222.3" r="4" pathLength="1"/><circle cx="260.8" cy="260.8" r="4" pathLength="1"/>
+                      <circle cx="222.3" cy="283.1" r="4" pathLength="1"/><circle cx="177.7" cy="283.1" r="4" pathLength="1"/>
+                      <circle cx="139.2" cy="260.8" r="4" pathLength="1"/><circle cx="116.9" cy="222.3" r="4" pathLength="1"/>
+                      <circle cx="116.9" cy="177.7" r="4" pathLength="1"/><circle cx="139.2" cy="139.2" r="4" pathLength="1"/>
+                      <circle cx="177.7" cy="116.9" r="4" pathLength="1"/><circle cx="222.3" cy="116.9" r="4" pathLength="1"/>
+                      <circle cx="260.8" cy="139.2" r="4" pathLength="1"/><circle cx="283.1" cy="177.7" r="4" pathLength="1"/>
+                    </g>
+                    <circle cx="200" cy="200" r="62" pathLength="1"/>
+                  </g>
+                  <g class="part static">
+                    <circle cx="200" cy="200" r="48" pathLength="1"/>
+                    <circle cx="200" cy="200" r="18" pathLength="1"/>
+                  </g>
+                  <g class="part" data-part="E">
+                    <circle cx="200" cy="168" r="6" pathLength="1"/><circle cx="230.4" cy="190.1" r="6" pathLength="1"/>
+                    <circle cx="218.8" cy="225.9" r="6" pathLength="1"/><circle cx="181.2" cy="225.9" r="6" pathLength="1"/>
+                    <circle cx="169.6" cy="190.1" r="6" pathLength="1"/>
+                  </g>
+                  <g class="part" data-part="A">
+                    <path class="fillable" d="M270 78.8 A140 140 0 0 1 340 200 L295 200 A95 95 0 0 0 247.5 117.7 Z" pathLength="1" stroke-width="2"/>
+                    <path d="M283 95 A124 124 0 0 1 323 170" pathLength="1" opacity=".5"/>
+                  </g>
+                  <g class="part" data-part="B">
+                    <path class="hidden-line" d="M267.7 103.4 A118 118 0 0 1 317.5 189.7 L299.6 191.3 A100 100 0 0 0 257.4 118.1 Z"/>
+                  </g>
+                  <g class="part" data-part="C">
+                    <circle class="fillable" cx="327.3" cy="213.4" r="8" pathLength="1"/>
+                    <path d="M322.3 213.4 h10 M327.3 208.4 v10" pathLength="1"/>
+                    <circle class="fillable" cx="252.1" cy="83" r="8" pathLength="1"/>
+                    <path d="M247.1 83 h10 M252.1 78 v10" pathLength="1"/>
+                  </g>
+                </g>
+
+                <g class="callout" data-part="A">
+                  <path d="M308.3 137.5 L410 100" stroke="currentColor" fill="none"/><circle cx="308.3" cy="137.5" r="2" fill="currentColor"/>
+                  <circle cx="422" cy="100" r="11" stroke="currentColor"/><text class="letter" x="422" y="104" text-anchor="middle">A</text>
+                  <text x="440" y="104">Caliper</text>
+                </g>
+                <g class="callout" data-part="B">
+                  <path d="M305.3 171.8 L410 160" stroke="currentColor" fill="none"/><circle cx="305.3" cy="171.8" r="2" fill="currentColor"/>
+                  <circle cx="422" cy="160" r="11" stroke="currentColor"/><text class="letter" x="422" y="164" text-anchor="middle">B</text>
+                  <text x="440" y="164">Brake pads</text>
+                </g>
+                <g class="callout" data-part="C">
+                  <path d="M335 216 L410 220" stroke="currentColor" fill="none"/>
+                  <circle cx="422" cy="220" r="11" stroke="currentColor"/><text class="letter" x="422" y="224" text-anchor="middle">C</text>
+                  <text x="440" y="224">Slide bolt</text>
+                </g>
+                <g class="callout" data-part="D">
+                  <path d="M106 234.2 L68 320" stroke="currentColor" fill="none"/><circle cx="106" cy="234.2" r="2" fill="currentColor"/>
+                  <circle cx="62" cy="331" r="11" stroke="currentColor"/><text class="letter" x="62" y="335" text-anchor="middle">D</text>
+                  <text x="80" y="335">Rotor</text>
+                </g>
+                <g class="callout" data-part="E">
+                  <path d="M196 163 L98 60" stroke="currentColor" fill="none"/>
+                  <circle cx="90" cy="51" r="11" stroke="currentColor"/><text class="letter" x="90" y="55" text-anchor="middle">E</text>
+                  <text x="108" y="55">Lug nuts</text>
+                </g>
+              </svg>
+              <p class="caption">Hover a step to see the part it's about.</p>
+              </div>
+            </div>
+
+            <div class="procedure">
+              <ol class="steps-list" data-mode="new">
+                <li data-part="E"><strong>Loosen the lug nuts first</strong><p>With the car still on the ground and the parking brake on, turn each lug nut about half a turn. The tire's weight keeps the wheel from spinning.</p></li>
+                <li><strong>Lift the car and support it</strong><p>Jack at the lift point shown in your manual, then set a jack stand under the frame and lower the car onto it.</p><span class="warn"><b>Warning:</b> never work under a car held up only by a jack.</span></li>
+                <li data-part="D"><strong>Take the wheel off</strong><p>Behind it is a metal disc (the rotor) with a clamp around its edge (the caliper).</p></li>
+                <li data-part="C"><strong>Remove the lower slide bolt</strong><p>It's on the back of the caliper. Your manual lists the socket size.</p></li>
+                <li data-part="A"><strong>Swing the caliper up</strong><p>It pivots on the top bolt like a car hood. Don't let it hang by the rubber brake hose.</p></li>
+                <li data-part="B"><strong>Swap the pads</strong><p>Slide the old pads out, move any metal clips to the new ones, and slide them in.</p></li>
+                <li data-part="A"><strong>Push the piston back</strong><p>New pads are thicker, so press the caliper piston in slowly with a C-clamp. Watch that the brake fluid doesn't overflow.</p></li>
+                <li data-part="C"><strong>Put it back together and test</strong><p>Tighten the slide bolt to the torque in your manual, refit the wheel, and pump the brake pedal until it's firm.</p><span class="warn"><b>Warning:</b> the first few stops can feel soft. Test at low speed.</span></li>
+              </ol>
+
+              <ol class="steps-list" data-mode="pro" hidden>
+                <li data-part="E"><strong>Break lugs, lift, support, pull wheel</strong><p>Jack stands at the manual's lift points</p></li>
+                <li data-part="C"><strong>Remove lower slide bolt, pivot caliper up</strong><p>Support caliper off the hose</p></li>
+                <li data-part="B"><strong>Swap pads and hardware</strong><p>Inspect rotor for scoring and minimum thickness</p></li>
+                <li data-part="A"><strong>Compress piston</strong><p>Watch the reservoir level</p></li>
+                <li data-part="C"><strong>Reassemble, torque to spec, pump pedal</strong><p>Slide bolt and lug torque per your manual</p></li>
+              </ol>
+
+              <p class="footnote">This is an example. Real steps will come from your car's own service manual.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="how">
+      <div class="wrap">
+        <h2>How it works</h2>
+        <ol class="three">
+          <li>
+            <h3>Tell it about your car</h3>
+            <p>Give it the make, model, and year, then say what's going wrong.</p>
+          </li>
+          <li>
+            <h3>Say how much you know</h3>
+            <p>Be honest about your experience. It decides how much detail you get.</p>
+          </li>
+          <li>
+            <h3>Get your repair steps</h3>
+            <p>It looks up your car's service manual and lays out the fix for your situation.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="block" id="features">
+      <div class="wrap">
+        <h2>What we're building</h2>
+        <ul class="features">
+          <li><strong>Steps from the manual</strong><span>Instructions come from official service manuals, not guesses or forum threads.</span></li>
+          <li><strong>Matched to your experience</strong><span>Beginners get more guidance. Experienced folks get a faster walkthrough.</span></li>
+          <li><strong>Plain-language explanations</strong><span>You'll hear what's wrong and how to fix it without the jargon.</span></li>
+          <li><strong>Built around your car</strong><span>It takes your vehicle and any other details you give it into account.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="block">
+      <div class="wrap status">
+        <div>
+          <h2>Not open yet</h2>
+          <p class="sub">wrench.repair is still in development and isn't available to use. This page will be updated when that changes.</p>
+        </div>
+        <div class="safety">
+          <strong>A note on safety</strong>
+          <p>wrench.repair is a helper, not a substitute for a professional mechanic. Working on a vehicle can be dangerous. If a repair is beyond your skill level or involves safety-critical systems, take your vehicle to a qualified professional.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <img src="assets/logo-transparent-gradient.png" alt="wrench.repair" width="188" height="30">
+      <small>&copy; <span id="year"></span> wrench.repair</small>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+
+    // Hovering a step highlights its part in the drawing
+    const art = document.querySelector(".fig-art");
+    const lists = document.querySelectorAll(".steps-list");
+
+    function setStep(list, li) {
+      list.querySelectorAll("li").forEach((el) => el.classList.toggle("on", el === li));
+      const part = li ? li.dataset.part : null;
+      art.classList.toggle("has-on", !!part);
+      art.querySelectorAll("[data-part]").forEach((el) => el.classList.toggle("on", el.dataset.part === part));
+    }
+
+    lists.forEach((list) => {
+      list.addEventListener("pointerover", (e) => {
+        const li = e.target.closest("li");
+        if (li) setStep(list, li);
+      });
+      list.addEventListener("pointerleave", () => setStep(list, null));
+    });
+
+    // Switch between the beginner and experienced versions
+    document.querySelectorAll(".toggle button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".toggle button").forEach((b) => b.setAttribute("aria-pressed", b === btn));
+        lists.forEach((list) => {
+          list.hidden = list.dataset.mode !== btn.dataset.mode;
+          setStep(list, null);
+        });
+      });
+    });
+  </script>
+</body>
+</html>
